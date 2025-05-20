@@ -1,0 +1,23 @@
+TEAM_SELECTOR_AGENT_DESC = ""
+FAQ_AGENT_DESC = ""
+MATCH_ANALYSIS_AGENT_DESC = ""
+
+GENERAL_AGENT_SYS_PROMPT = (
+    "",
+    ""
+)
+
+TEAM_SELECTOR_AGENT_SYS_PROMPT = (
+    "",
+    ""
+)
+
+FAQ_AGENT_SYS_PROMPT = (
+    "",
+    ""
+)
+
+MATCH_ANALYSIS_AGENT_SYS_PROMPT = (
+    "",
+    ""
+)
