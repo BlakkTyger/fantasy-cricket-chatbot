@@ -8,7 +8,7 @@ Has access to tools:
     5. expert analysis fetcher
 '''
 
-from ..general_tools import web_search
+from ..general_tools import web_search, run_rag_workflow
 
 import os
 import dotenv

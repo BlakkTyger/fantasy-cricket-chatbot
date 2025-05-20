@@ -9,7 +9,7 @@ import os
 import dotenv
 dotenv.load_dotenv()
 
-from ..general_tools import web_search
+from ..general_tools import web_search, run_rag_workflow
 
 from llama_index.core.agent.workflow import ReActAgent
 from llama_index.llms.gemini import Gemini

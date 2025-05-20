@@ -4,7 +4,6 @@ import os
 import dotenv
 dotenv.load_dotenv()
 
-
 from llama_index.core.agent.workflow import ReActAgent
 from llama_index.core.workflow import Context
 from llama_index.llms.gemini import Gemini

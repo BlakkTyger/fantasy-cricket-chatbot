@@ -2,6 +2,7 @@ python-dotenv==1.1.0
 llama-index-core==0.12.37
 llama-index==0.12.37
 llama-index-postprocessor-cohere-rerank==0.4.0
-llama-index-llms-gemini==0.4.14 
-llama-index-embeddings-gemini==0.3.2 
-llama-index-utils-workflow==0.3.2 
+llama-index-utils-workflow==0.3.2
+tavily-python==0.7.2 
+llama-index-llms-google-genai
+llama-index-embeddings-google-genai

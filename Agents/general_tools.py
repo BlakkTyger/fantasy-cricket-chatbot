@@ -8,7 +8,7 @@ import os
 import dotenv
 import asyncio
 from datetime import datetime
-dotenv.load_dotenv()
+dotenv.load_dotenv('..')
 
 from llama_index.core import (
     SimpleDirectoryReader,
@@ -30,18 +30,43 @@ from llama_index.core.chat_engine import SimpleChatEngine
 from llama_index.core import Settings
 
 from llama_index.postprocessor.cohere_rerank import CohereRerank
-from llama_index.llms.gemini import Gemini
-from llama_index.embeddings.gemini import GeminiEmbedding
+
+from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
+from google.genai.types import EmbedContentConfig
+from llama_index.llms.google_genai import GoogleGenAI
 
 from llama_index.utils.workflow import draw_all_possible_flows
 
+from tavily import TavilyClient
+
 GOOGLE_API_KEY = os.environ["GOOGLE_API_KEY"]
 COHERE_API_KEY = os.environ["COHERE_API_KEY"]
-Settings.embed_model = embedding_model = GeminiEmbedding(api_key=GOOGLE_API_KEY, model_name="models/embedding-001")
-Settings.llm = Gemini(model="models/gemini-1.5-flash", api_key=GOOGLE_API_KEY)
+TAVILY_API_KEY = os.environ["TAVILY_API_KEY"]
 
-def web_search(query):
-    return
+Settings.embed_model = embedding_model = embed_model = GoogleGenAIEmbedding(
+    model_name="text-embedding-004",
+    embed_batch_size=100,
+    api_key=GOOGLE_API_KEY
+)
+Settings.llm = GoogleGenAI(
+    model="gemini-2.0-flash",
+    api_key=GOOGLE_API_KEY
+)
+
+def web_search(query: str) -> dict:
+    """
+    Perform a web search to gather additional information.
+
+    Args:
+        query (str): The search query string.
+
+    Returns:
+        dict: A dictionary containing the search results with keys: 'title', 'url', 'content', 'score', 'raw_content'
+    """
+
+    tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
+    response = tavily_client.search(query)
+    return response['results']
 
 # Event classes
 class JudgeEvent(Event):
@@ -63,8 +88,18 @@ class SummarizeEvent(Event):
     response: str
 
 class ComplicatedWorkflow(Workflow):
+    def __init__(self, directory_path, persist_dir, *args, **kwargs):
+        self.directory_path = directory_path
+        self.persist_dir = persist_dir
+        self.final_result = None  # To store the final output
+        super().__init__(*args, **kwargs)
+
     def load_or_create_index(self, directory_path, persist_dir):
-        embedding_model = GeminiEmbedding(api_key=GOOGLE_API_KEY, model_name="models/embedding-001")
+        embedding_model = GoogleGenAIEmbedding(
+                            model_name="text-embedding-004",
+                            embed_batch_size=100,
+                            api_key=GOOGLE_API_KEY
+                        )
         
         if os.path.exists(persist_dir):
             print("Loading existing index...")
@@ -86,15 +121,24 @@ class ComplicatedWorkflow(Workflow):
     @step(pass_context=True)
     async def judge_query(self, ctx: Context, ev: StartEvent | JudgeEvent) -> BadQueryEvent | ParallelRAGEvent:
         if not hasattr(ctx.data, "llm"):
-            llm = Gemini(model="models/gemini-1.5-flash", api_key=GOOGLE_API_KEY)
+            llm = GoogleGenAI(
+                        model="gemini-2.0-flash",
+                        api_key=GOOGLE_API_KEY
+                    )
             ctx.data["llm"] = llm
+            print(os.path.abspath(self.directory_path))
+            print(os.path.abspath(self.persist_dir))
             ctx.data["index"] = self.load_or_create_index(
-                "data_short",
-                "storage"
+                self.directory_path,
+                self.persist_dir
             )
             ctx.data["judge"] = SimpleChatEngine.from_defaults(
                 llm=llm,
-                embed_model=GeminiEmbedding(api_key=GOOGLE_API_KEY, model_name="models/embedding-001")
+                embed_model=GoogleGenAIEmbedding(
+                            model_name="text-embedding-004",
+                            embed_batch_size=100,
+                            api_key=GOOGLE_API_KEY
+                        )
             )
 
         response = ctx.data["judge"].chat(f"""
@@ -155,7 +199,11 @@ class ComplicatedWorkflow(Workflow):
     @step(pass_context=True)
     async def parallel_rag(self, ctx: Context, ev: ParallelRAGEvent) -> ResponseEvent:
         index = ctx.data["index"]
-        embed_model = GeminiEmbedding(api_key=GOOGLE_API_KEY, model_name="models/embedding-001")
+        embed_model = GoogleGenAIEmbedding(
+                            model_name="text-embedding-004",
+                            embed_batch_size=100,
+                            api_key=GOOGLE_API_KEY
+                        )
         
         # Run all three strategies in parallel
         responses = await asyncio.gather(
@@ -192,17 +240,36 @@ class ComplicatedWorkflow(Workflow):
 
         best_response = int(str(response))
         print(f"Best response was number {best_response}, which was from {ready[best_response-1].source}")
-        return StopEvent(result=str(ready[best_response-1].response))
+        
+        # Store the final result in the instance variable
+        self.final_result = str(ready[best_response-1].response)
+        
+        return StopEvent(result=self.final_result)
+    
+    # New method to get the final result
+    def get_result(self):
+        """
+        Returns the final result after the workflow has completed.
+        """
+        return self.final_result
 
-async def main():
-    c = ComplicatedWorkflow(timeout=60, verbose=True)
+async def run_rag_workflow(user_query, directory_path):
+    persist_dir = f"../Embeddings/{directory_path.split("/Data/")[-1]}"
+    print(f"persist directort: {persist_dir}")
+    workflow = ComplicatedWorkflow(timeout=60,
+                verbose=True,
+                directory_path = directory_path,
+                persist_dir = persist_dir
+            )
+    
+    final_result = await workflow.run(query = user_query)
 
-    result = await c.run(
-        query="attendence criteria of PHY210M"
-    )
+    return final_result
+
+if __name__ == '__main__':
+    import warnings
+    warnings.filterwarnings('ignore')
+    query = "The directory has two resumes. Analyze Each resume and predict who has a higer chance of getting into a software development intern role at google? Give a definitive answer after thourough analysis with explanation"
+    direc = "../Data/Test"
+    result = asyncio.run(run_rag_workflow(query, direc))
     print(result)
-
-if __name__ == "__main__":
-    start = datetime.now()
-    asyncio.run(main())
-    print("\n Time Taken = ", datetime.now()-start)
