@@ -6,6 +6,7 @@ Has access to tools:
 '''
 
 import os
+import asyncio
 import dotenv
 dotenv.load_dotenv()
 
@@ -18,19 +19,20 @@ from llama_index.core.tools import FunctionTool
 
 from ..consts import FAQ_AGENT_SYS_PROMPT
 
-def rag_over_FAQ():
-    return
+async def rag_over_FAQ(query: str) -> str:
+    result = asyncio.run(run_rag_workflow(query, "Data/FAQ"))
+    return result
 
 tools = [
     FunctionTool.from_defaults(
-        name="",
+        name="Web Search Tool",
         fn=web_search,
-        description=""
+        description="Search the internet for answers for the queries related to fantasy cricket platforms"
     ),
     FunctionTool.from_defaults(
-        name="",
+        name="Rules and Regulations Documents Search",
         fn=rag_over_FAQ,
-        description=""
+        description="Search through the Rules and Regulations Documents of various fantasy cricket websites"
     )
 ]
 
