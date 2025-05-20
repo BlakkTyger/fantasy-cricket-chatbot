@@ -6,7 +6,7 @@ Helps cricket fans make smarter Fantasy Cricket decisions through an intelligent
     - Team Decider
     - Differential Pick Algorithm
     - Player Comparison
-    - 
+
 2. In the statistical analysis code, store verbose on names, performace metrics etc when the model is running for explanability dataset (this is called deicison making verbose)
 
 3. Explanability of player picks on the basis of RAG-based agentic chatbot (flow: RAG over Knowledge Base -> apppend final result and decision making verbose in prompt -> ask LLM to generate explanation based on reasoning)
@@ -25,3 +25,6 @@ Helps cricket fans make smarter Fantasy Cricket decisions through an intelligent
 
 6. Datasets:
     - Organized in directories for tree traversal: efficient search
+
+### Relevant Papers
+- [Multi-Agentic Framework for Crafting Fantasy 11 Cricket Teams](arxiv.org/pdf/2410.01307)
